@@ -1,0 +1,14 @@
+{
+  "name": "apito-sdk-basic-example",
+  "version": "1.0.0",
+  "description": "Basic example of using the Apito JavaScript SDK",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@apito/apito-sdk": "file:../../"
+  }
+}
