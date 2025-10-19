@@ -6,7 +6,6 @@ import {
   TypedDocumentStructure,
   TypedSearchResult,
   CreateAndUpdateRequest,
-  AuditData,
   GraphQLResponse,
   GraphQLError as SDKGraphQLError,
   ApitoError,
@@ -153,7 +152,7 @@ export class ApitoClient implements InjectedDBOperationInterface {
     };
 
     const response = await this.executeGraphQL(query, variables);
-    
+
     if (!response.data?.getSingleData) {
       throw new ValidationError('Resource not found');
     }
@@ -210,7 +209,7 @@ export class ApitoClient implements InjectedDBOperationInterface {
     };
 
     const response = await this.executeGraphQL(query, variables);
-    
+
     if (!response.data?.getModelData) {
       throw new ValidationError('Invalid search response format');
     }
@@ -226,14 +225,8 @@ export class ApitoClient implements InjectedDBOperationInterface {
     connection: Record<string, any>
   ): Promise<SearchResult> {
     const query = `
-      query GetRelationDocuments(
-        $_id: String!
-        $connection: JSON
-      ) {
-        getRelationDocuments(
-          _id: $_id
-          connection: $connection
-        ) {
+      query GetModelData($model: String!, $page: Int, $limit: Int, $where: JSON, $search: String, $connection : ListAllDataDetailedOfAModelConnectionPayload) {
+        getModelData(model: $model, page: $page, limit: $limit, where: $where, search: $search, connection: $connection) {
           results {
             id
             relation_doc_id
@@ -252,38 +245,65 @@ export class ApitoClient implements InjectedDBOperationInterface {
       }
     `;
 
-    const variables = {
-      _id: id,
+    const variables: Record<string, any> = {
       connection,
     };
 
+    // Extract model from connection if available
+    if (connection.model) {
+      variables.model = connection.model;
+    } else {
+      throw new ValidationError('model is required in connection parameters');
+    }
+
+    // Add filter parameters if provided in connection
+    if (connection.filter) {
+      const filter = connection.filter;
+      if (filter.page !== undefined) {
+        variables.page = filter.page;
+      }
+      if (filter.limit !== undefined) {
+        variables.limit = filter.limit;
+      }
+      if (filter.where !== undefined) {
+        variables.where = filter.where;
+      }
+      if (filter.search !== undefined) {
+        variables.search = filter.search;
+      }
+    }
+
     const response = await this.executeGraphQL(query, variables);
-    
-    if (!response.data?.getRelationDocuments) {
+
+    if (!response.data?.getModelData) {
       throw new ValidationError('Invalid relation documents response format');
     }
 
-    return response.data.getRelationDocuments;
+    return response.data.getModelData;
   }
 
   /**
    * Create a new resource
    */
   async createNewResource(request: CreateAndUpdateRequest): Promise<DefaultDocumentStructure> {
+    if (!request.model) {
+      throw new ValidationError('model is required');
+    }
+
+    if (!request.payload) {
+      throw new ValidationError('payload is required');
+    }
+
     const query = `
-      mutation CreateNewResource(
-        $model: String!
-        $payload: JSON!
-        $connect: JSON
-        $single_page_data: Boolean
-      ) {
-        createModelData(
-          model_name: $model
-          payload: $payload
+      mutation CreateNewData($model: String!, $single_page_data: Boolean, $payload: JSON!, $connect: JSON) {
+        upsertModelData(
           connect: $connect
+          model_name: $model
           single_page_data: $single_page_data
+          payload: $payload
         ) {
           id
+          type
           data
           meta {
             created_at
@@ -292,51 +312,58 @@ export class ApitoClient implements InjectedDBOperationInterface {
             revision
             revision_at
           }
-          type
         }
       }
     `;
 
-    const variables = {
+    const variables: Record<string, any> = {
       model: request.model,
       payload: request.payload,
-      connect: request.connect || null,
       single_page_data: request.singlePageData || false,
     };
 
+    if (request.connect) {
+      variables.connect = request.connect;
+    }
+
     const response = await this.executeGraphQL(query, variables);
-    
-    if (!response.data?.createModelData) {
+
+    if (!response.data?.upsertModelData) {
       throw new ValidationError('Invalid create response format');
     }
 
-    return response.data.createModelData;
+    return response.data.upsertModelData;
   }
 
   /**
    * Update an existing resource
    */
   async updateResource(request: CreateAndUpdateRequest): Promise<DefaultDocumentStructure> {
+    if (!request.id) {
+      throw new ValidationError('id is required');
+    }
+
+    if (!request.model) {
+      throw new ValidationError('model is required');
+    }
+
+    if (!request.payload) {
+      throw new ValidationError('payload is required');
+    }
+
     const query = `
-      mutation UpdateResource(
-        $model: String!
-        $_id: String!
-        $payload: JSON!
-        $connect: JSON
-        $disconnect: JSON
-        $single_page_data: Boolean
-        $force_update: Boolean
-      ) {
+      mutation UpdateModelData($_id: String!, $model: String!, $single_page_data: Boolean, $force_update: Boolean, $payload: JSON!, $connect: JSON, $disconnect: JSON) {
         upsertModelData(
-          model_name: $model
-          _id: $_id
-          payload: $payload
           connect: $connect
-          disconnect: $disconnect
+          model_name: $model
           single_page_data: $single_page_data
           force_update: $force_update
+          disconnect: $disconnect
+          _id: $_id
+          payload: $payload
         ) {
           id
+          type
           data
           meta {
             created_at
@@ -345,27 +372,27 @@ export class ApitoClient implements InjectedDBOperationInterface {
             revision
             revision_at
           }
-          type
         }
       }
     `;
 
-    if (!request.id) {
-      throw new ValidationError('ID is required for update operations');
-    }
-
-    const variables = {
-      model: request.model,
+    const variables: Record<string, any> = {
       _id: request.id,
+      model: request.model,
       payload: request.payload,
-      connect: request.connect || null,
-      disconnect: request.disconnect || null,
       single_page_data: request.singlePageData || false,
       force_update: request.forceUpdate || false,
     };
 
+    if (request.connect) {
+      variables.connect = request.connect;
+    }
+    if (request.disconnect) {
+      variables.disconnect = request.disconnect;
+    }
+
     const response = await this.executeGraphQL(query, variables);
-    
+
     if (!response.data?.upsertModelData) {
       throw new ValidationError('Invalid update response format');
     }
@@ -378,7 +405,7 @@ export class ApitoClient implements InjectedDBOperationInterface {
    */
   async deleteResource(model: string, id: string): Promise<void> {
     const query = `
-      mutation DeleteResource($model: String!, $_id: String!) {
+      mutation DeleteData($model: String!, $_id: String!) {
         deleteModelData(model_name: $model, _id: $_id) {
           id
         }
@@ -394,26 +421,7 @@ export class ApitoClient implements InjectedDBOperationInterface {
   }
 
   /**
-   * Send audit log entry
-   */
-  async sendAuditLog(auditData: AuditData): Promise<void> {
-    const query = `
-      mutation SendAuditLog($auditData: JSON!) {
-        sendAuditLog(auditData: $auditData) {
-          message
-        }
-      }
-    `;
-
-    const variables = {
-      auditData,
-    };
-
-    await this.executeGraphQL(query, variables);
-  }
-
-  /**
-   * Debug functionality
+   * Debug is used to debug the plugin, you can pass data here to debug the plugin
    */
   async debug(stage: string, ...data: any[]): Promise<any> {
     const query = `
@@ -427,11 +435,11 @@ export class ApitoClient implements InjectedDBOperationInterface {
 
     const variables = {
       stage,
-      data: data.length === 1 ? data[0] : data,
+      data,
     };
 
     const response = await this.executeGraphQL(query, variables);
-    
+
     return response.data?.debug;
   }
 }

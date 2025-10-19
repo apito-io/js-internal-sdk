@@ -45,15 +45,6 @@ export interface TypedSearchResult<T> {
   count: number;
 }
 
-export interface AuditData {
-  resource: string;
-  action: string;
-  author: Record<string, any>;
-  data: Record<string, any>;
-  meta: Record<string, any>;
-  [key: string]: any;
-}
-
 export interface Filter {
   page?: number;
   offset?: number;
@@ -127,7 +118,6 @@ export interface InjectedDBOperationInterface {
   createNewResource(request: CreateAndUpdateRequest): Promise<DefaultDocumentStructure>;
   updateResource(request: CreateAndUpdateRequest): Promise<DefaultDocumentStructure>;
   deleteResource(model: string, id: string): Promise<void>;
-  sendAuditLog(auditData: AuditData): Promise<void>;
   debug(stage: string, ...data: any[]): Promise<any>;
 }
 

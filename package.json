@@ -1,6 +1,6 @@
 {
   "name": "@apito/js-internal-sdk",
-  "version": "0.1.0",
+  "version": "1.2.0",
   "description": "A comprehensive JavaScript SDK for communicating with Apito GraphQL API endpoints",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -27,13 +27,6 @@
     "prepare": "tsup",
     "size": "size-limit",
     "analyze": "size-limit --why"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts)$": "ts-jest"
-    }
   },
   "keywords": [
     "apito",

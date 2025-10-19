@@ -8,6 +8,7 @@
 // Export main client and types
 export { ApitoClient, createClient } from './client';
 export { TypedOperations } from './typed-operations';
+export { Version, getVersion } from './version';
 export * from './types';
 
 // Re-export commonly used types for convenience
@@ -18,7 +19,6 @@ export type {
   TypedDocumentStructure,
   TypedSearchResult,
   CreateAndUpdateRequest,
-  AuditData,
   GraphQLResponse,
   GraphQLError,
   ApitoError,
